@@ -1,9 +1,14 @@
-#ifndef livcsll
-#define livcsll
+#ifndef LIVCSLL
+#define LIVCSLL
 
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
+#ifdef _WIN32
+    #include <stdlib.h>
+    #include <sys/timeb.h>
+    #include <windows.h>
+#endif
 
 #define COLOR_RESET   "\033[0m"
 #define COLOR_GREEN   "\033[32m"
@@ -21,10 +26,22 @@ int has_color_support() {
 }
 
 static const char* get_current_time() {
-    static char buffer[20];
+    static char buffer[25];
     time_t t = time(NULL);
-    struct tm *tm = localtime(&t);
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", tm);
+    struct tm lt = *localtime(&t);
+
+    int offset;
+#ifdef _WIN32
+    TIME_ZONE_INFORMATION tz;
+    GetTimeZoneInformation(&tz);
+    offset = -tz.Bias / 60;  // Bias is in minutes, so divide by 60 for hours offset
+#else
+    offset = lt.tm_gmtoff / 3600;
+#endif
+
+    snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d %02d:%02d:%02d%+d",
+             lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday,
+             lt.tm_hour, lt.tm_min, lt.tm_sec, offset);
     return buffer;
 }
 
@@ -38,9 +55,9 @@ static const char* get_current_time() {
     } \
 } while(0)
 
-#define INFO(fmt, ...)    LOG(COLOR_WHITE,  "INFO",    fmt, ##__VA_ARGS__)
-#define SUCCESS(fmt, ...) LOG(COLOR_GREEN,  "SUCCESS", fmt, ##__VA_ARGS__)
-#define WARN(fmt, ...)    LOG(COLOR_YELLOW, "WARN",    fmt, ##__VA_ARGS__)
-#define ERROR(fmt, ...)   LOG(COLOR_RED,    "ERROR",   fmt, ##__VA_ARGS__)
+#define L_INFO(fmt, ...)    LOG(COLOR_WHITE,  "INFO",    fmt, ##__VA_ARGS__)
+#define L_SUCCESS(fmt, ...) LOG(COLOR_GREEN,  "SUCCESS", fmt, ##__VA_ARGS__)
+#define L_WARN(fmt, ...)    LOG(COLOR_YELLOW, "WARN",    fmt, ##__VA_ARGS__)
+#define L_ERROR(fmt, ...)   LOG(COLOR_RED,    "ERROR",   fmt, ##__VA_ARGS__)
 
-#endif //livcsll
+#endif // LIVCSLL
